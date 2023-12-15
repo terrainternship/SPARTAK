@@ -282,8 +282,8 @@ class VideoFeatureAnalyzer:
         video.release()
         cv2.destroyAllWindows()
 
-    def process_and_analyze_frames(self, main_frame, start_folder, break_folder, frames_folder, result_folder, compare_mode, frames_count=300):
-        start_frames = self.process_video_frames(start_frame=main_frame, frames_count=frames_count, frames_folder=frames_folder, break_folder=break_folder, extract_frames=False, single_folder=False)
+    def process_and_analyze_frames(self, main_frame, start_folder, break_folder, frames_folder, result_folder, compare_mode, frames_count=300, extract_frames=False):
+        start_frames = self.process_video_frames(start_frame=main_frame, frames_count=frames_count, frames_folder=frames_folder, break_folder=break_folder, extract_frames=extract_frames, single_folder=False)
         featured_frames = self.find_featured_frames(start_frames, start_folder, main_frame, frames_count, compare_mode)
 
         compare_index = 0
