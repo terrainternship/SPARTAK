@@ -30,12 +30,12 @@ class VideoFeatureAnalyzer:
         data = {}
         try:
             all_frames_path = os.path.join(self.features_path, 'data', f'all_frames.1.gz')
-            with open(all_frames_path, 'rb') as file:
-                data = pickle.load(file)
+            with gzip.open(all_frames_path, 'rb') as gz_file:
+                data = pickle.load(gz_file)
         except FileNotFoundError:
             print("Файл с данными не найден.")
         except Exception as e:
-            print(f"Ошибка при загрузке данных: {e}")
+            print(f"Ошибка при загрузке данных фреймов: {e}")
 
         return data
         
