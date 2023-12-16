@@ -220,11 +220,11 @@ class VideoFeatureAnalyzer:
         pattern = re.compile(r'(\s*\d+ \d{2}\.\d{2}\.\d{4}\s*)-(\s*\d+ \d{2}\.\d{2}\.\d{4}\s*)\.(\d+)\.gz')
 
         files = os.listdir(self.features_compare_path)
-        self.logger.debug('frames ', len(files))
+        self.logger.debug(f'frames: {len(files)}')
         files.sort(reverse=True)
 
         for filename in files:
-            self.logger.debug(f'processing {filename}')
+            self.logger.debug(f'processing: {filename}')
             source = os.path.join(self.features_compare_path, filename)
             loaded_results = self.load_compared_results(source)
             filtered_results = self.get_selected_frames_results(loaded_results, start_frame, frames_count)
@@ -233,7 +233,7 @@ class VideoFeatureAnalyzer:
             match = pattern.match(filename)
             if match:
                 folder1, folder2, step = match.groups()
-                self.logger.debug(f'matched folders {folder1}, {folder2}, {step}')
+                self.logger.debug(f'matched folders: {folder1}, {folder2}, {step}')
 
                 if folder1 not in processed_folders:
                     start_frame1 = result['frame_number1']['min']
@@ -264,7 +264,7 @@ class VideoFeatureAnalyzer:
         folder1 = start_folder
         start_frames[start_folder] = start_frame
 
-        self.logger.debug(f'start frames {len(start_frames)}')
+        self.logger.debug(f'start frames lenght: {len(start_frames)}')
         for folder2, folder2_frame in list(start_frames.items()):
             if folder2 == start_folder:
                 featured_frames[folder2] = [start_frame, start_frame, start_frame]
