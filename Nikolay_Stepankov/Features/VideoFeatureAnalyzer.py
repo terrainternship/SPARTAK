@@ -38,6 +38,7 @@ class VideoFeatureAnalyzer:
         console_handler.setFormatter(formatter)
         file_handler.setFormatter(formatter)
 
+        self.logger.handlers.clear()
         self.logger.addHandler(console_handler)
         self.logger.addHandler(file_handler)
 
