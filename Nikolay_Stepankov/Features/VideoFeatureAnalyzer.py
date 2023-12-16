@@ -29,7 +29,7 @@ class VideoFeatureAnalyzer:
         self.logger.propagate = False
         self.logger.setLevel(log_level)
 
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
         console_handler = logging.StreamHandler()
         console_handler.setLevel(log_level)
