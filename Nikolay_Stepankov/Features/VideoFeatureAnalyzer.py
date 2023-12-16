@@ -13,15 +13,33 @@ from scipy.spatial.distance import cdist
 from sklearn.metrics.pairwise import cosine_similarity, pairwise_distances
 from PIL import Image
 from google.colab import drive
+import logging
 
 class VideoFeatureAnalyzer:
-    def __init__(self, video_path, features_path, step=1, mode='inception'):
+    def __init__(self, video_path, features_path, debug=False, step=1, mode='inception'):
         self.video_path = video_path
         self.features_path = features_path
         self.features_data_path = os.path.join(features_path, mode)
         self.features_compare_path = os.path.join(features_path, f'{mode}-compare')
         self.all_frames_data = self.load_all_frames_data()
         self.step = step
+
+        log_level = logging.DEBUG if debug else logging.INFO
+        self.logger = logging.getLogger('my_logger')
+        self.logger.setLevel(log_level)
+
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(log_level)
+
+        file_handler = logging.FileHandler('debug.log')
+        file_handler.setLevel(log_level)
+
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        console_handler.setFormatter(formatter)
+        file_handler.setFormatter(formatter)
+
+        self.logger.addHandler(console_handler)
+        self.logger.addHandler(file_handler)
 
     def mount(self):
         drive.mount('/content/drive/')
@@ -33,12 +51,12 @@ class VideoFeatureAnalyzer:
             with gzip.open(all_frames_path, 'rb') as gz_file:
                 data = pickle.load(gz_file)
         except FileNotFoundError:
-            print("Файл с данными не найден.")
+            self.logger.error("Файл с данными не найден.")
         except Exception as e:
-            print(f"Ошибка при загрузке данных фреймов: {e}")
+            self.logger.error(f"Ошибка при загрузке данных фреймов: {e}")
 
         return data
-        
+
     def get_cached_file_path(self, original_file_path, cache_folder, copy_files=True):
         file_name = os.path.basename(original_file_path)
         last_folder_name = os.path.basename(os.path.dirname(original_file_path))
@@ -49,12 +67,12 @@ class VideoFeatureAnalyzer:
             os.makedirs(cached_folder_path)
 
         if os.path.isfile(cached_file_path):
-            print(f'Файл уже скопирован: {cached_file_path}')
+            self.logger.info(f'Файл уже скопирован: {cached_file_path}')
         elif copy_files:
             start_time = time.time()
             shutil.copy2(original_file_path, cached_file_path)
             end_time = time.time()
-            print(f'Файл скопирован из {original_file_path} в {cached_file_path} за {end_time - start_time:.2f} секунд.')
+            self.logger.info(f'Файл скопирован из {original_file_path} в {cached_file_path} за {end_time - start_time:.2f} секунд.')
         else:
             return original_file_path
 
@@ -68,7 +86,7 @@ class VideoFeatureAnalyzer:
             os.makedirs(dst_dir)
 
         if os.path.isfile(dst_path):
-            print(f'Файл уже скопирован: {dst_path}')
+            self.logger.info(f'Файл уже скопирован: {dst_path}')
         else:
             with tempfile.NamedTemporaryFile(dir=dst_dir, delete=False) as temp_file:
                 shutil.copy2(src_path, temp_file.name)
@@ -77,14 +95,14 @@ class VideoFeatureAnalyzer:
             shutil.move(temp_file_path, dst_path)
 
             elapsed_time = time.time() - start_time
-            print(f'Файл {src_path} скопирован в {dst_path} за {elapsed_time:.2f} секунд')
+            self.logger.info(f'Файл {src_path} скопирован в {dst_path} за {elapsed_time:.2f} секунд')
 
     def get_feature_filename(self, video_folder_name: str):
         return os.path.join(self.features_data_path, f"{video_folder_name}.{self.step}.gz")
 
     def load_features(self, file_path, delete_invalid=False):
         if not os.path.isfile(file_path):
-            print('Файл не найден: ', file_path)
+            self.logger.error(f'Файл не найден: {file_path}')
             return None
 
         try:
@@ -92,10 +110,10 @@ class VideoFeatureAnalyzer:
                 data = pickle.load(f)
             return data
         except Exception as e:
-            print('Файл поврежден или ошибка чтения:', file_path)
-            print('Ошибка:', e)
+            self.logger.error(f'Файл поврежден или ошибка чтения: {file_path}')
+            self.logger.error(f'Ошибка: {e}')
             if delete_invalid:
-                print('Удаление поврежденного файла...')
+                self.logger.info(f'Удаление поврежденного файла: {file_path}')
                 os.remove(file_path)
             return None
 
@@ -122,7 +140,7 @@ class VideoFeatureAnalyzer:
         videos_features2 = self.load_features(feature_file_path2)
 
         if videos_features1 is None or videos_features2 is None:
-            print('Ошибка загрузки признаков')
+            self.logger.error('Ошибка загрузки признаков')
             return None
 
         videos_features1.sort(key=lambda x: self.extract_number_from_path(x['video_path']))
@@ -202,9 +220,11 @@ class VideoFeatureAnalyzer:
         pattern = re.compile(r'(\s*\d+ \d{2}\.\d{2}\.\d{4}\s*)-(\s*\d+ \d{2}\.\d{2}\.\d{4}\s*)\.(\d+)\.gz')
 
         files = os.listdir(self.features_compare_path)
+        self.logger.debug('frames ', len(files))
         files.sort(reverse=True)
 
         for filename in files:
+            self.logger.debug(f'processing {filename}')
             source = os.path.join(self.features_compare_path, filename)
             loaded_results = self.load_compared_results(source)
             filtered_results = self.get_selected_frames_results(loaded_results, start_frame, frames_count)
@@ -213,9 +233,11 @@ class VideoFeatureAnalyzer:
             match = pattern.match(filename)
             if match:
                 folder1, folder2, step = match.groups()
+                self.logger.debug(f'matched folders {folder1}, {folder2}, {step}')
 
                 if folder1 not in processed_folders:
                     start_frame1 = result['frame_number1']['min']
+                    frames_info[folder1] = start_frame1
                     if extract_frames:
                         frames1 = self.load_specific_frames(f'{folder1}.{step}', start_frame1, frames_count)
                         self.extract_and_save_frames(frames1, folder1, frames_folder, single_folder)
@@ -223,6 +245,7 @@ class VideoFeatureAnalyzer:
 
                 if folder2 not in processed_folders:
                     start_frame2 = result['frame_number2']['min']
+                    frames_info[folder2] = start_frame2
                     if extract_frames:
                         frames2 = self.load_specific_frames(f'{folder2}.{step}', start_frame2, frames_count)
                         self.extract_and_save_frames(frames2, folder2, frames_folder, single_folder)
@@ -232,7 +255,7 @@ class VideoFeatureAnalyzer:
                 if break_folder is not None and (folder1 == break_folder or folder2 == break_folder):
                     break
             else:
-                print("No match found")
+                self.logger.error(f'No match found {filename}')
 
         return frames_info
 
@@ -241,19 +264,20 @@ class VideoFeatureAnalyzer:
         folder1 = start_folder
         start_frames[start_folder] = start_frame
 
+        self.logger.debug(f'start frames {len(start_frames)}')
         for folder2, folder2_frame in list(start_frames.items()):
             if folder2 == start_folder:
                 featured_frames[folder2] = [start_frame, start_frame, start_frame]
-                print(f"1: {folder1},'{compare_mode}',{start_frame},{start_frame},{start_frame}")
+                self.logger.debug(f"folder(1) found: {folder1},'{compare_mode}',{start_frame},{start_frame},{start_frame}")
             else:
                 compare_result = self.compare_feature_files_cpu(folder1, folder2, True, True,
                                                                start_frame, 1, folder2_frame, frames_count)
-                
+
                 cos_frame = compare_result['cos_similarity'][0][3]
                 euc_frame = compare_result['euc_similarity'][0][3]
                 man_frame = compare_result['man_similarity'][0][3]
                 featured_frames[folder2] = [cos_frame, euc_frame, man_frame]
-                print(f"2: {folder2},'{compare_mode}',{cos_frame},{euc_frame},{man_frame}")
+                self.logger.debug(f"folder(2) found: {folder2},'{compare_mode}',{cos_frame},{euc_frame},{man_frame}")
 
                 if compare_mode == 'cos':
                     start_frame = cos_frame
@@ -295,7 +319,7 @@ class VideoFeatureAnalyzer:
             compare_index = 2
 
         for folder, data in list(featured_frames.items()):
-            print('featured:', folder, data[compare_index])
+            self.logger.debug(f'featured frames: {folder}, {data[compare_index]}')
             frames = self.load_specific_frames(f"{folder}.1", data[compare_index], 1)
             self.extract_and_save_frames(frames, folder, result_folder, single_folder=True)
 
@@ -303,7 +327,7 @@ class VideoFeatureAnalyzer:
 
     def load_compared_results(self, filename):
         if not os.path.isfile(filename):
-            print(f"Файл не найден: {filename}")
+            self.logger.error(f"Файл не найден: {filename}")
             return None
 
         with gzip.open(filename, 'rb') as file:
@@ -311,7 +335,7 @@ class VideoFeatureAnalyzer:
                 results = pickle.load(file)
                 return results
             except Exception as e:
-                print(f"Ошибка загрузки {filename}: {e}")
+                self.logger.error(f"Ошибка загрузки {filename}: {e}")
                 return None
 
     def analyze_frame_sequences(self, cos_similarity):
@@ -363,7 +387,7 @@ class VideoFeatureAnalyzer:
             if os.path.exists(file_path):
                 return file_path
 
-        raise FileNotFoundError(f"No such file: {file_name} with .MP4 or .MOV extension in {folder}")
+        raise FileNotFoundError(f"Не найден файл: {file_name} с .MP4 или .MOV расширением в папке {folder}")
 
     def extract_and_save_frames(self, data, folder_name, frames_folder, single_folder=False):
         last_file_name = ""
@@ -442,7 +466,7 @@ class VideoFeatureAnalyzer:
                         invalid_features.append(file_path)
                     else:
                         for feature in features:
-                            print(feature['video_path'], len(feature['features']))
+                            self.logger.info(f"{feature['video_path']}, {len(feature['features'])}")
 
             print(invalid_features)
 
@@ -453,28 +477,28 @@ class VideoFeatureAnalyzer:
                 for line in file:
                     parts = line.strip().rsplit(maxsplit=1)
                     if len(parts) != 2:
-                        print(f"Неверный формат строки: {line}")
+                        self.logger.error(f"Неверный формат строки: {line}")
                         continue
 
                     video_path, expected_frames_str = parts
                     try:
                         expected_frames = int(expected_frames_str)
                     except ValueError:
-                        print(f"Некорректное количество фреймов: {expected_frames_str} в строке: {line}")
+                        self.logger.error(f"Некорректное количество фреймов: {expected_frames_str} в строке: {line}")
                         continue
 
                     if not os.path.exists(video_path):
-                        print(f"Файл {video_path} не найден.")
+                        self.logger.error(f"Файл {video_path} не найден.")
                         continue
 
                     cap = cv2.VideoCapture(video_path)
                     real_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
                     if real_frames == expected_frames:
-                        print(f"Видео {video_path}: количество фреймов соответствует ({real_frames}).")
+                        self.logger.info(f"Видео {video_path}: количество фреймов соответствует ({real_frames}).")
                     else:
                         invalid_files.append(video_path)
-                        print(f"-- Видео {video_path}: расхождение в количестве фреймов (ожидалось: {expected_frames}, нашлось: {real_frames}).")
+                        self.logger.error(f"-- Видео {video_path}: расхождение в количестве фреймов (ожидалось: {expected_frames}, нашлось: {real_frames}).")
 
                     cap.release()
 
@@ -485,22 +509,22 @@ class VideoFeatureAnalyzer:
         for folder in video_subfolders:
             feature_file = self.get_feature_filename(folder)
             if not os.path.exists(os.path.join(self.features_data_path, feature_file)):
-                print(f"Файл признаков для '{folder}' отсутствует.")
+                self.logger.error(f"Файл признаков для '{folder}' отсутствует.")
 
     def compare_and_save(self, folder1, folder2):
         output_file = os.path.join(self.features_compare_path, f"{folder1}-{folder2}.{self.step}.gz")
 
         if os.path.isfile(output_file):
-            print(f'Результаты уже есть {output_file}.')
+            self.logger.info(f'Результаты уже есть {output_file}.')
             return
 
-        print(f'Сравнение папки {folder1} и {folder2}')
+        self.logger.info(f'Сравнение папки {folder1} и {folder2}')
 
         start_time = time.time()
         results = self.compare_feature_files_cpu(folder1, folder2)
         end_time = time.time()
         elapsed_time = end_time - start_time
-        print(f"Время выполнения: {elapsed_time} секунд.")
+        self.logger.info(f"Время выполнения: {elapsed_time} секунд.")
 
         if results is not None:
             with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
@@ -535,5 +559,4 @@ class VideoFeatureAnalyzer:
                     result_folder=result_folder,
                     compare_mode='cos',  # cos, euc, man
                 )
-
 
