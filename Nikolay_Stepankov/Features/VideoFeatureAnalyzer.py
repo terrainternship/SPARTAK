@@ -26,21 +26,22 @@ class VideoFeatureAnalyzer:
 
         log_level = logging.DEBUG if debug else logging.INFO
         self.logger = logging.getLogger('my_logger')
-        self.logger.setLevel(log_level)
         self.logger.propagate = False
-        self.logger.handlers.clear()
+        self.logger.setLevel(log_level)
 
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
         console_handler = logging.StreamHandler()
         console_handler.setLevel(log_level)
         console_handler.setFormatter(formatter)
-        self.logger.addHandler(console_handler)
 
         file_handler = logging.FileHandler('debug.log')
         file_handler.setLevel(log_level)
         file_handler.setFormatter(formatter)
+
+        self.logger.handlers.clear()
         self.logger.addHandler(file_handler)
+        self.logger.addHandler(console_handler)
 
     def mount(self):
         drive.mount('/content/drive/')
