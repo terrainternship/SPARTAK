@@ -226,7 +226,7 @@ class VideoFeatureAnalyzer:
         files.sort(reverse=True)
 
         for filename in files:
-            self.logger.debug(f'processing: {filename}')
+            self.logger.info(f'processing: {filename}')
             source = os.path.join(self.features_compare_path, filename)
             loaded_results = self.load_compared_results(source)
             filtered_results = self.get_selected_frames_results(loaded_results, start_frame, frames_count)
@@ -266,11 +266,11 @@ class VideoFeatureAnalyzer:
         folder1 = start_folder
         start_frames[start_folder] = start_frame
 
-        self.logger.debug(f'start frames lenght: {len(start_frames)}')
+        self.logger.info(f'start frames lenght: {len(start_frames)}')
         for folder2, folder2_frame in list(start_frames.items()):
             if folder2 == start_folder:
                 featured_frames[folder2] = [start_frame, start_frame, start_frame]
-                self.logger.debug(f"folder(1) found: {folder1},'{compare_mode}',{start_frame},{start_frame},{start_frame}")
+                self.logger.info(f"folder(1) found: {folder1},'{compare_mode}',{start_frame},{start_frame},{start_frame}")
             else:
                 compare_result = self.compare_feature_files_cpu(folder1, folder2, True, True,
                                                                start_frame, 1, folder2_frame, frames_count)
@@ -279,7 +279,7 @@ class VideoFeatureAnalyzer:
                 euc_frame = compare_result['euc_similarity'][0][3]
                 man_frame = compare_result['man_similarity'][0][3]
                 featured_frames[folder2] = [cos_frame, euc_frame, man_frame]
-                self.logger.debug(f"folder(2) found: {folder2},'{compare_mode}',{cos_frame},{euc_frame},{man_frame}")
+                self.logger.info(f"folder(2) found: {folder2},'{compare_mode}',{cos_frame},{euc_frame},{man_frame}")
 
                 if compare_mode == 'cos':
                     start_frame = cos_frame
