@@ -16,13 +16,14 @@ from google.colab import drive
 import logging
 
 class VideoFeatureAnalyzer:
-    def __init__(self, video_path, features_path, debug=False, step=1, mode='inception'):
+    def __init__(self, video_path, features_path, debug=False, step=1, mode='inception', ext='jpg'):
         self.video_path = video_path
         self.features_path = features_path
         self.features_data_path = os.path.join(features_path, mode)
         self.features_compare_path = os.path.join(features_path, f'{mode}-compare')
         self.all_frames_data = self.load_all_frames_data()
         self.step = step
+        self.ext = ext
 
         log_level = logging.DEBUG if debug else logging.INFO
         self.logger = logging.getLogger('my_logger')
@@ -293,7 +294,7 @@ class VideoFeatureAnalyzer:
         return featured_frames
 
     def create_video_from_images(self, folder_path, output_path, fps=30, frame_size=(1920, 1080)):
-        images = [img for img in os.listdir(folder_path) if img.endswith(".jpg")]
+        images = [img for img in os.listdir(folder_path) if img.endswith(f'.{self.ext}')]
         images.sort()
 
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -422,10 +423,10 @@ class VideoFeatureAnalyzer:
             frame_file_name = ""
             if single_folder:
                 output_folder = frames_folder
-                frame_file_name = f"{folder_name}-{str(frame_number).zfill(6)}.jpg"
+                frame_file_name = f"{folder_name}-{str(frame_number).zfill(6)}.{self.ext}"
             else:
                 output_folder = os.path.join(frames_folder, folder_name)
-                frame_file_name = f"{str(frame_number).zfill(6)}.jpg"
+                frame_file_name = f"{str(frame_number).zfill(6)}.{self.ext}"
 
             os.makedirs(output_folder, exist_ok=True)
 
